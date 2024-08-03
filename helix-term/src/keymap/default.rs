@@ -211,6 +211,7 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
 
         // move under <space>c
         "C-c" => toggle_comments,
+        "C-y" => insert_char_interactive,
 
         // z family for save/restore/combine from/to sels from register
 
