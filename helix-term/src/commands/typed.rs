@@ -3089,7 +3089,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     },
     TypableCommand {
         name: "config-open",
-        aliases: &[],
+        aliases: &["ec"],
         doc: "Open the user config.toml file.",
         fun: open_config,
         signature: CommandSignature::none(),
