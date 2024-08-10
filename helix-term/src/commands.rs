@@ -536,6 +536,7 @@ impl MappableCommand {
         shell_keep_pipe, "Filter selections with shell predicate",
         suspend, "Suspend and return to shell",
         rename_symbol, "Rename symbol",
+        expand_macro, "Expand Rust macro recursively",
         increment, "Increment item under cursor",
         decrement, "Decrement item under cursor",
         record_macro, "Record macro",

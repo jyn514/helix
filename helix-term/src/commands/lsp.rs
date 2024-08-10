@@ -1224,6 +1224,27 @@ pub fn rename_symbol(cx: &mut Context) {
     }
 }
 
+pub fn expand_macro(cx: &mut Context) {
+    let (view, doc) = current!(cx.editor);
+    let language_server =
+        language_server_with_feature!(cx.editor, doc, LanguageServerFeature::ExpandMacro);
+    let offset_encoding = language_server.offset_encoding();
+    let pos = doc.position(view.id, offset_encoding);
+    let future = language_server.expand_macro(doc.identifier(), pos).unwrap();
+
+    cx.callback(
+        future,
+        move |editor, _compositor, response: helix_lsp::ExpandedMacro| {
+            let doc = Document::from(
+                helix_core::Rope::from(response.expansion),
+                None,
+                editor.config.clone(),
+            );
+            editor.new_file_from_document(Action::Replace, doc);
+        },
+    )
+}
+
 pub fn select_references_to_symbol_under_cursor(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
     let language_server =

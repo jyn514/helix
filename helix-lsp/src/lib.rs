@@ -6,7 +6,7 @@ pub mod snippet;
 mod transport;
 
 use arc_swap::ArcSwap;
-pub use client::Client;
+pub use client::{Client, ExpandedMacro};
 pub use futures_executor::block_on;
 pub use jsonrpc::Call;
 pub use lsp::{Position, Url};

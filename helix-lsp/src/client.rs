@@ -9,13 +9,13 @@ use helix_core::{find_workspace, syntax::LanguageServerFeature, ChangeSet, Rope}
 use helix_loader::VERSION_AND_GIT_HASH;
 use helix_stdx::path;
 use lsp::{
-    notification::DidChangeWorkspaceFolders, CodeActionCapabilityResolveSupport,
+    notification::DidChangeWorkspaceFolders, request::Request, CodeActionCapabilityResolveSupport,
     DidChangeWorkspaceFoldersParams, OneOf, PositionEncodingKind, SignatureHelp, Url,
     WorkspaceFolder, WorkspaceFoldersChangeEvent,
 };
 use lsp_types as lsp;
 use parking_lot::Mutex;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::sync::{
     atomic::{AtomicU64, Ordering},
@@ -60,6 +60,12 @@ pub struct Client {
     initialize_notify: Arc<Notify>,
     /// workspace folders added while the server is still initializing
     req_timeout: u64,
+}
+
+#[derive(Deserialize)]
+pub struct ExpandedMacro {
+    pub expansion: String,
+    pub name: String,
 }
 
 impl Client {
@@ -354,6 +360,7 @@ impl Client {
                 capabilities.inlay_hint_provider,
                 Some(OneOf::Left(true) | OneOf::Right(InlayHintServerCapabilities::Options(_)))
             ),
+            LanguageServerFeature::ExpandMacro => self.name == "rust-analyzer",
         }
     }
 
@@ -1522,6 +1529,33 @@ impl Client {
             let response: Option<lsp::WorkspaceEdit> = serde_json::from_value(json)?;
             Ok(response.unwrap_or_default())
         })
+    }
+
+    pub fn expand_macro(
+        &self,
+        text_document: lsp::TextDocumentIdentifier,
+        position: lsp::Position,
+    ) -> Option<impl Future<Output = Result<Value>>> {
+        struct ExpandMacro;
+
+        #[derive(Serialize, Deserialize)]
+        #[allow(non_snake_case)]
+        struct ExpandMacroParams {
+            textDocument: lsp::TextDocumentIdentifier,
+            position: lsp::Position,
+        }
+
+        impl Request for ExpandMacro {
+            type Params = ExpandMacroParams;
+            type Result = Value;
+            const METHOD: &'static str = "rust-analyzer/expandMacro";
+        }
+
+        let params = ExpandMacroParams {
+            textDocument: text_document,
+            position,
+        };
+        Some(self.call::<ExpandMacro>(params))
     }
 
     pub fn command(&self, command: lsp::Command) -> Option<impl Future<Output = Result<Value>>> {
