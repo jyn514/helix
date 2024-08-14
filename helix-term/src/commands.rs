@@ -43,7 +43,7 @@ use helix_core::{
     selection, shellwords, surround,
     syntax::{BlockCommentToken, LanguageServerFeature},
     text_annotations::{Overlay, TextAnnotations},
-    textobject,
+    textobject::{self, TextObject},
     unicode::width::UnicodeWidthChar,
     visual_offset_from_block, Deletion, LineEnding, Position, Range, Rope, RopeGraphemes,
     RopeReader, RopeSlice, Selection, SmallVec, Syntax, Tendril, Transaction,
@@ -499,6 +499,8 @@ impl MappableCommand {
         surround_delete, "Surround delete",
         select_textobject_around, "Select around object",
         select_textobject_inner, "Select inside object",
+        reflow_textobject_around, "Reflow around object",
+        reflow_textobject_inner, "Reflow inside object",
         goto_next_function, "Goto next function",
         goto_prev_function, "Goto previous function",
         goto_next_class, "Goto next type definition",
@@ -5408,14 +5410,32 @@ fn goto_prev_entry(cx: &mut Context) {
 }
 
 fn select_textobject_around(cx: &mut Context) {
-    select_textobject(cx, textobject::TextObject::Around);
+    select_textobject(cx, TextObject::Around);
 }
 
 fn select_textobject_inner(cx: &mut Context) {
-    select_textobject(cx, textobject::TextObject::Inside);
+    select_textobject(cx, TextObject::Inside);
 }
 
-fn select_textobject(cx: &mut Context, objtype: textobject::TextObject) {
+fn select_textobject(cx: &mut Context, objtype: TextObject) {
+    act_on_textobject(cx, objtype, |_| ());
+}
+
+fn reflow_textobject_around(cx: &mut Context) {
+    reflow_textobject(cx, TextObject::Around);
+}
+
+fn reflow_textobject_inner(cx: &mut Context) {
+    reflow_textobject(cx, TextObject::Inside);
+}
+
+fn reflow_textobject(cx: &mut Context, objtype: TextObject) {
+    act_on_textobject(cx, objtype, |cx| {
+        ":reflow".parse::<MappableCommand>().unwrap().execute(cx)
+    });
+}
+
+fn act_on_textobject(cx: &mut Context, objtype: TextObject, action: fn(&mut Context)) {
     let count = cx.count();
 
     cx.on_next_key(move |cx, event| {
@@ -5496,12 +5516,13 @@ fn select_textobject(cx: &mut Context, objtype: textobject::TextObject) {
                 doc.set_selection(view.id, selection);
             };
             cx.editor.apply_motion(textobject);
+            action(cx)
         }
     });
 
     let title = match objtype {
-        textobject::TextObject::Inside => "Match inside",
-        textobject::TextObject::Around => "Match around",
+        TextObject::Inside => "Match inside",
+        TextObject::Around => "Match around",
         _ => return,
     };
     let help_text = [
