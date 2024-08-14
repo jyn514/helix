@@ -172,18 +172,25 @@ pub fn raw_regex_prompt(
     cx.push_layer(Box::new(prompt));
 }
 
-type FilePicker = Picker<PathBuf, PathBuf>;
+type FilePicker = Picker<PathBuf, Vec<PathBuf>>;
 
-pub fn file_picker(root: PathBuf, config: &helix_view::editor::Config) -> FilePicker {
+pub fn file_picker(roots: Vec<PathBuf>, config: &helix_view::editor::Config) -> FilePicker {
     use ignore::{types::TypesBuilder, WalkBuilder};
     use std::time::Instant;
 
     let now = Instant::now();
 
     let dedup_symlinks = config.file_picker.deduplicate_links;
-    let absolute_root = root.canonicalize().unwrap_or_else(|_| root.clone());
+    let absolute_roots: Vec<_> = roots
+        .iter()
+        .map(|root| root.canonicalize().unwrap_or_else(|_| root.clone()))
+        .collect();
+    // let absolute_roots = dedup_roots(absolute_roots);
 
-    let mut walk_builder = WalkBuilder::new(&root);
+    let mut walk_builder = WalkBuilder::new(&roots[0]);
+    for root in &roots[1..] {
+        walk_builder.add(root);
+    }
     walk_builder
         .hidden(config.file_picker.hidden)
         .parents(config.file_picker.parents)
@@ -194,7 +201,7 @@ pub fn file_picker(root: PathBuf, config: &helix_view::editor::Config) -> FilePi
         .git_exclude(config.file_picker.git_exclude)
         .sort_by_file_name(|name1, name2| name1.cmp(name2))
         .max_depth(config.file_picker.max_depth)
-        .filter_entry(move |entry| filter_picker_entry(entry, &absolute_root, dedup_symlinks));
+        .filter_entry(move |entry| filter_picker_entry(entry, &absolute_roots, dedup_symlinks));
 
     walk_builder.add_custom_ignore_filename(helix_loader::config_dir().join("ignore"));
     walk_builder.add_custom_ignore_filename(".helix/ignore");
@@ -223,14 +230,16 @@ pub fn file_picker(root: PathBuf, config: &helix_view::editor::Config) -> FilePi
 
     let columns = [PickerColumn::new(
         "path",
-        |item: &PathBuf, root: &PathBuf| {
-            item.strip_prefix(root)
-                .unwrap_or(item)
-                .to_string_lossy()
-                .into()
+        |item: &PathBuf, roots: &Vec<PathBuf>| {
+            for root in roots {
+                if let Ok(rel_path) = item.strip_prefix(root) {
+                    return rel_path.to_string_lossy().into();
+                }
+            }
+            item.to_string_lossy().into()
         },
     )];
-    let picker = Picker::new(columns, 0, [], root, move |cx, path: &PathBuf, action| {
+    let picker = Picker::new(columns, 0, [], roots, move |cx, path: &PathBuf, action| {
         if let Err(e) = cx.editor.open(path, action) {
             let err = if let Some(err) = e.source() {
                 format!("{}", err)

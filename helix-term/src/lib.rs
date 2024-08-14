@@ -12,7 +12,7 @@ pub mod job;
 pub mod keymap;
 pub mod ui;
 
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use futures_util::Future;
 mod handlers;
@@ -45,7 +45,7 @@ fn true_color() -> bool {
 }
 
 /// Function used for filtering dir entries in the various file pickers.
-fn filter_picker_entry(entry: &DirEntry, root: &Path, dedup_symlinks: bool) -> bool {
+fn filter_picker_entry(entry: &DirEntry, roots: &[PathBuf], dedup_symlinks: bool) -> bool {
     // We always want to ignore popular VCS directories, otherwise if
     // `ignore` is turned off, we end up with a lot of noise
     // in our picker.
@@ -59,11 +59,9 @@ fn filter_picker_entry(entry: &DirEntry, root: &Path, dedup_symlinks: bool) -> b
     // We also ignore symlinks that point inside the current directory
     // if `dedup_links` is enabled.
     if dedup_symlinks && entry.path_is_symlink() {
-        return entry
-            .path()
-            .canonicalize()
-            .ok()
-            .map_or(false, |path| !path.starts_with(root));
+        return entry.path().canonicalize().ok().map_or(false, |path| {
+            !roots.iter().any(|root| path.starts_with(root))
+        });
     }
 
     true

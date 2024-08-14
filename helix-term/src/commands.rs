@@ -6,6 +6,7 @@ pub(crate) mod typed;
 pub use dap::*;
 use futures_util::FutureExt;
 use helix_event::status;
+use helix_loader::find_workspace_in;
 use helix_stdx::{
     path::expand_tilde,
     rope::{self, RopeSliceExt},
@@ -78,6 +79,7 @@ use std::{
     collections::{HashMap, HashSet},
     error::Error,
     fmt,
+    fs::canonicalize,
     future::Future,
     io::Read,
     num::NonZeroUsize,
@@ -1295,7 +1297,8 @@ fn goto_file_impl(cx: &mut Context, action: Action) {
         let path = expand_tilde(Cow::from(PathBuf::from(sel)));
         let path = &rel_path.join(path);
         if path.is_dir() {
-            let picker = ui::file_picker(path.into(), &cx.editor.config());
+            // TODO: what happens if there are multiple paths?
+            let picker = ui::file_picker(vec![path.into()], &cx.editor.config());
             cx.push_layer(Box::new(overlaid(picker)));
         } else if let Err(e) = cx.editor.open(path, action) {
             cx.editor.set_error(format!("Open file failed: {:?}", e));
@@ -1332,7 +1335,7 @@ fn open_url(cx: &mut Context, url: Url, action: Action) {
         Ok(_) | Err(_) => {
             let path = &rel_path.join(url.path());
             if path.is_dir() {
-                let picker = ui::file_picker(path.into(), &cx.editor.config());
+                let picker = ui::file_picker(vec![path.into()], &cx.editor.config());
                 cx.push_layer(Box::new(overlaid(picker)));
             } else if let Err(e) = cx.editor.open(path, action) {
                 cx.editor.set_error(format!("Open file failed: {:?}", e));
@@ -2266,6 +2269,52 @@ fn make_search_word_bounded(cx: &mut Context) {
     }
 }
 
+fn global_search_dirs(editor: &mut Editor, canonicalize: bool) -> anyhow::Result<Vec<PathBuf>> {
+    // directories we always want to show
+    let dirs = vec![
+        (
+            "Current working directory",
+            helix_stdx::env::current_working_dir(),
+        ),
+        ("Workspace directory", find_workspace().0),
+    ];
+    for (desc, dir) in &dirs {
+        if !dir.exists() {
+            return Err(anyhow::anyhow!("{desc} does not exist"));
+        }
+    }
+
+    // add the workspace of each buffer
+    let buffers = editor
+        .documents()
+        .flat_map(|doc| doc.path())
+        .filter_map(|path| {
+            if canonicalize {
+                // HACK: this definitely shouldn't be upstreamed lol but it makes fuzzy-finding on dotfiles work for me
+                std::fs::canonicalize(path).ok()
+            } else if path.exists() {
+                Some(path.clone())
+            } else {
+                // just ignore buffers in paths that have been deleted
+                None
+            }
+        })
+        .map(|path| find_workspace_in(path.clone()).0);
+
+    let mut dirs: Vec<_> = dirs
+        .into_iter()
+        .map(|(_, path)| path)
+        .chain(buffers)
+        .collect();
+
+    // now, deduplicate all the paths
+    // TODO: dedup not just exact matches, but also paths in subdirectories.
+    dirs.sort_unstable();
+    dirs.dedup();
+
+    Ok(dirs)
+}
+
 fn global_search(cx: &mut Context) {
     #[derive(Debug)]
     struct FileResult {
@@ -2310,11 +2359,10 @@ fn global_search(cx: &mut Context) {
             return async { Ok(()) }.boxed();
         }
 
-        let search_root = helix_stdx::env::current_working_dir();
-        if !search_root.exists() {
-            return async { Err(anyhow::anyhow!("Current working directory does not exist")) }
-                .boxed();
-        }
+        let search_roots = match global_search_dirs(editor, false) {
+            Ok(roots) => roots,
+            Err(err) => return async { Err(err) }.boxed(),
+        };
 
         let documents: Vec<_> = editor
             .documents()
@@ -2337,16 +2385,21 @@ fn global_search(cx: &mut Context) {
         };
 
         let dedup_symlinks = config.file_picker_config.deduplicate_links;
-        let absolute_root = search_root
-            .canonicalize()
-            .unwrap_or_else(|_| search_root.clone());
+        let absolute_roots: Vec<_> = search_roots
+            .iter()
+            .map(|root| root.canonicalize().unwrap_or_else(|_| root.clone()))
+            .collect();
 
         let injector = injector.clone();
         async move {
             let searcher = SearcherBuilder::new()
                 .binary_detection(BinaryDetection::quit(b'\x00'))
                 .build();
-            WalkBuilder::new(search_root)
+            let mut walker = WalkBuilder::new(&search_roots[0]);
+            for root in &search_roots[1..] {
+                walker.add(root);
+            }
+            walker
                 .hidden(config.file_picker_config.hidden)
                 .parents(config.file_picker_config.parents)
                 .ignore(config.file_picker_config.ignore)
@@ -2356,7 +2409,7 @@ fn global_search(cx: &mut Context) {
                 .git_exclude(config.file_picker_config.git_exclude)
                 .max_depth(config.file_picker_config.max_depth)
                 .filter_entry(move |entry| {
-                    filter_picker_entry(entry, &absolute_root, dedup_symlinks)
+                    filter_picker_entry(entry, &absolute_roots, dedup_symlinks)
                 })
                 .add_custom_ignore_filename(helix_loader::config_dir().join("ignore"))
                 .add_custom_ignore_filename(".helix/ignore")
@@ -2849,12 +2902,14 @@ fn append_mode(cx: &mut Context) {
 }
 
 fn file_picker(cx: &mut Context) {
-    let root = find_workspace().0;
-    if !root.exists() {
-        cx.editor.set_error("Workspace directory does not exist");
-        return;
-    }
-    let picker = ui::file_picker(root, &cx.editor.config());
+    let roots = match global_search_dirs(cx.editor, true) {
+        Ok(roots) => roots,
+        Err(err) => {
+            cx.editor.set_error(err.to_string());
+            return;
+        }
+    };
+    let picker = ui::file_picker(roots, &cx.editor.config());
     cx.push_layer(Box::new(overlaid(picker)));
 }
 
@@ -2871,7 +2926,7 @@ fn file_picker_in_current_buffer_directory(cx: &mut Context) {
         }
     };
 
-    let picker = ui::file_picker(path, &cx.editor.config());
+    let picker = ui::file_picker(vec![path], &cx.editor.config());
     cx.push_layer(Box::new(overlaid(picker)));
 }
 
@@ -2882,7 +2937,7 @@ fn file_picker_in_current_directory(cx: &mut Context) {
             .set_error("Current working directory does not exist");
         return;
     }
-    let picker = ui::file_picker(cwd, &cx.editor.config());
+    let picker = ui::file_picker(vec![cwd], &cx.editor.config());
     cx.push_layer(Box::new(overlaid(picker)));
 }
 
