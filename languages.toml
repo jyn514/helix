@@ -564,7 +564,7 @@ file-types = ["cs", "csx", "cake"]
 roots = ["sln", "csproj"]
 comment-token = "//"
 block-comment-tokens = { start = "/*", end = "*/" }
-indent = { tab-width = 4, unit = "\t" }
+indent = { tab-width = 8, unit = "\t" }
 language-servers = [ "omnisharp" ]
 
 [language.debugger]
@@ -625,7 +625,7 @@ comment-token = "//"
 block-comment-tokens = { start = "/*", end = "*/" }
 language-servers = [ "gopls", "golangci-lint-lsp" ]
 # TODO: gopls needs utf-8 offsets?
-indent = { tab-width = 4, unit = "\t" }
+indent = { tab-width = 8, unit = "\t" }
 
 [language.debugger]
 name = "go"
@@ -676,7 +676,7 @@ file-types = [{ glob = "go.mod" }]
 auto-format = true
 comment-token = "//"
 language-servers = [ "gopls" ]
-indent = { tab-width = 4, unit = "\t" }
+indent = { tab-width = 8, unit = "\t" }
 
 [[grammar]]
 name = "gomod"
@@ -704,7 +704,7 @@ file-types = [{ glob = "go.work" }]
 auto-format = true
 comment-token = "//"
 language-servers = [ "gopls" ]
-indent = { tab-width = 4, unit = "\t" }
+indent = { tab-width = 8, unit = "\t" }
 
 [[grammar]]
 name = "gowork"
@@ -1037,7 +1037,7 @@ injection-regex = "tex"
 file-types = ["tex", "sty", "cls", "Rd", "bbx", "cbx"]
 comment-token = "%"
 language-servers = [ "texlab" ]
-indent = { tab-width = 4, unit = "\t" }
+indent = { tab-width = 8, unit = "\t" }
 
 [[grammar]]
 name = "latex"
@@ -1050,7 +1050,7 @@ injection-regex = "bib"
 file-types = ["bib"]
 comment-token = "%"
 language-servers = [ "texlab" ]
-indent = { tab-width = 4, unit = "\t" }
+indent = { tab-width = 8, unit = "\t" }
 auto-format = true
 
 [language.formatter]
@@ -1390,7 +1390,7 @@ file-types = [{ glob = "Makefile" }, { glob = "makefile" }, "make", "mk", "mak",
 shebangs = ["make", "gmake"]
 injection-regex = "(make|makefile|Makefile|mk)"
 comment-token = "#"
-indent = { tab-width = 4, unit = "\t" }
+indent = { tab-width = 8, unit = "\t" }
 
 [[grammar]]
 name = "make"
@@ -1673,7 +1673,7 @@ scope = "source.gitconfig"
 file-types = [{ glob = ".gitmodules" }, { glob = ".gitconfig" }, { glob = ".git/config" }, { glob = ".config/git/config" }]
 injection-regex = "git-config"
 comment-token = "#"
-indent = { tab-width = 4, unit = "\t" }
+indent = { tab-width = 8, unit = "\t" }
 
 [[grammar]]
 name = "git-config"
@@ -1996,7 +1996,7 @@ roots = ["project.godot"]
 auto-format = true
 formatter = { command = "gdformat", args = ["-"] }
 comment-token = "#"
-indent = { tab-width = 4, unit = "\t" }
+indent = { tab-width = 8, unit = "\t" }
 
 [[grammar]]
 name = "gdscript"
@@ -2011,7 +2011,7 @@ shebangs = []
 roots = ["project.godot"]
 auto-format = false
 comment-token = ";"
-indent = { tab-width = 4, unit = "\t" }
+indent = { tab-width = 8, unit = "\t" }
 
 [[grammar]]
 name = "godot-resource"
@@ -2064,7 +2064,7 @@ injection-regex = "(dtsi?|devicetree|fdt)"
 file-types = ["dts", "dtsi"]
 comment-token = "//"
 block-comment-tokens = { start = "/*", end = "*/" }
-indent = { tab-width = 4, unit = "\t" }
+indent = { tab-width = 8, unit = "\t" }
 
 [[grammar]]
 name = "devicetree"
@@ -2106,7 +2106,7 @@ roots = ["ols.json", "main.odin"]
 language-servers = [ "ols" ]
 comment-token = "//"
 block-comment-tokens = { start = "/*", end = "*/" }
-indent = { tab-width = 4, unit = "\t" }
+indent = { tab-width = 8, unit = "\t" }
 formatter = { command = "odinfmt", args = [ "-stdin", "true" ] }
 
 [language.debugger]
@@ -2187,7 +2187,7 @@ language-servers = [ "vlang-language-server" ]
 auto-format = true
 comment-token = "//"
 block-comment-tokens = { start = "/*", end = "*/" }
-indent = { tab-width = 4, unit = "\t" }
+indent = { tab-width = 8, unit = "\t" }
 
 [[grammar]]
 name = "v"
@@ -2237,7 +2237,7 @@ file-types = ["scad"]
 comment-token = "//"
 block-comment-tokens = { start = "/*", end = "*/" }
 language-servers = [ "openscad-lsp" ]
-indent = { tab-width = 2, unit = "\t" }
+indent = { tab-width = 8, unit = "\t" }
 
 [[grammar]]
 name = "openscad"
@@ -2354,7 +2354,7 @@ roots = ["cue.mod"]
 auto-format = true
 comment-token = "//"
 language-servers = [ "cuelsp" ]
-indent = { tab-width = 4, unit = "\t" }
+indent = { tab-width = 8, unit = "\t" }
 formatter = { command = "cue", args = ["fmt", "-"] }
 
 [[grammar]]
@@ -2677,7 +2677,7 @@ scope = "source.env"
 file-types = [{ glob = ".env" }, { glob = ".env.*" }, { glob = ".envrc" }, { glob = ".envrc.*" }]
 injection-regex = "env"
 comment-token = "#"
-indent = { tab-width = 4, unit = "\t" }
+indent = { tab-width = 8, unit = "\t" }
 grammar = "bash"
 
 [[language]]
@@ -2712,7 +2712,7 @@ file-types = [
 ]
 injection-regex = "ini"
 comment-token = "#"
-indent = { tab-width = 4, unit = "\t" }
+indent = { tab-width = 8, unit = "\t" }
 
 [[grammar]]
 name = "ini"
@@ -3490,7 +3490,7 @@ scope = "source.supercollider"
 injection-regex = "supercollider"
 file-types = ["scd", "sc", "quark"]
 comment-token = "//"
-indent = { tab-width = 4, unit = "\t" }
+indent = { tab-width = 8, unit = "\t" }
 
 [[grammar]]
 name = "supercollider"
