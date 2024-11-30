@@ -974,7 +974,7 @@ file-types = [
 shebangs = ["sh", "bash", "dash", "zsh"]
 comment-token = "#"
 language-servers = [ "bash-language-server" ]
-indent = { tab-width = 2, unit = "  " }
+indent = { tab-width = 8, unit = "\t" }
 
 [[grammar]]
 name = "bash"
